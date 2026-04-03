@@ -28,6 +28,7 @@ const INPUTS: Record<Expression, string> = {
   speaking: 'speaking',
   eating:   'eating',
   yawn:     'yawn',
+  laugh:    'laugh',
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
@@ -52,9 +53,14 @@ function RiveCharacter({ size = 200, expression = 'idle' }: Props) {
   const speakingInput = useStateMachineInput(rive, STATE_MACHINE, INPUTS.speaking)
   const eatingInput   = useStateMachineInput(rive, STATE_MACHINE, INPUTS.eating)
   const yawnInput     = useStateMachineInput(rive, STATE_MACHINE, INPUTS.yawn)
+  const laughInput    = useStateMachineInput(rive, STATE_MACHINE, INPUTS.laugh)
 
   // Fire the trigger for the current expression
-  const inputs = { idle: idleInput, happy: happyInput, hungry: hungryInput, thinking: thinkingInput, speaking: speakingInput, eating: eatingInput, yawn: yawnInput }
+  const inputs: Record<Expression, typeof idleInput> = {
+    idle: idleInput, happy: happyInput, hungry: hungryInput,
+    thinking: thinkingInput, speaking: speakingInput,
+    eating: eatingInput, yawn: yawnInput, laugh: laughInput,
+  }
   const target = inputs[expression]
   if (target && !target.value) {
     target.fire?.()

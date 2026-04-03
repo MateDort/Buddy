@@ -2,7 +2,7 @@
 // Placeholder until Rive .riv assets arrive
 // All animation is CSS — compositor thread, no JS loops
 
-export type Expression = 'idle' | 'happy' | 'hungry' | 'thinking' | 'speaking' | 'eating' | 'yawn'
+export type Expression = 'idle' | 'happy' | 'hungry' | 'thinking' | 'speaking' | 'eating' | 'yawn' | 'laugh'
 
 interface Props {
   size?: number
@@ -17,6 +17,7 @@ const MOUTH: Record<Expression, string> = {
   speaking: 'M44 101 Q50 111 56 101',  // base open — animated by CSS
   eating:   'M43 100 Q50 115 57 100',
   yawn:     'M42 99 Q50 121 58 99',
+  laugh:    'M39 100 Q50 118 61 100',
 }
 
 const CSS = `
@@ -85,6 +86,40 @@ const CSS = `
     transform-box: fill-box; transform-origin: top center;
   }
 
+  /* ── Laugh — wide open mouth bounces, body shakes ── */
+  @keyframes buddy-laugh-mouth {
+    0%    { d: path('M39 101 Q50 116 61 101'); }
+    15%   { d: path('M38 99 Q50 120 62 99'); }
+    30%   { d: path('M39 101 Q50 116 61 101'); }
+    50%   { d: path('M38 98 Q50 122 62 98'); }
+    65%   { d: path('M39 101 Q50 116 61 101'); }
+    80%   { d: path('M38 99 Q50 119 62 99'); }
+    100%  { d: path('M39 101 Q50 116 61 101'); }
+  }
+  @keyframes buddy-laugh-shake {
+    0%,100% { transform: translateX(0) rotate(0deg); }
+    20%     { transform: translateX(-2px) rotate(-1.5deg); }
+    40%     { transform: translateX(2px) rotate(1.5deg); }
+    60%     { transform: translateX(-1.5px) rotate(-1deg); }
+    80%     { transform: translateX(1.5px) rotate(1deg); }
+  }
+  @keyframes buddy-laugh-body {
+    0%,100% { transform: scaleX(1) scaleY(1); }
+    25%     { transform: scaleX(1.04) scaleY(0.97); }
+    50%     { transform: scaleX(0.97) scaleY(1.03); }
+    75%     { transform: scaleX(1.03) scaleY(0.98); }
+  }
+  .buddy-laugh-mouth {
+    animation: buddy-laugh-mouth 0.45s ease-in-out infinite;
+  }
+  .buddy-laugh-shake {
+    animation: buddy-laugh-shake 0.45s ease-in-out infinite;
+  }
+  .buddy-laugh-body {
+    animation: buddy-laugh-body 0.45s ease-in-out infinite;
+    transform-box: fill-box; transform-origin: center bottom;
+  }
+
   /* ── Yawn ── */
   @keyframes buddy-yawn-eye {
     0%,20%,100% { transform: scaleY(1); }
@@ -144,6 +179,7 @@ export function BuddyCharacter({ size = 200, expression = 'idle' }: Props) {
   const isYawning  = expression === 'yawn'
   const isSpeaking = expression === 'speaking'
   const isHappy    = expression === 'happy'
+  const isLaughing = expression === 'laugh'
 
   const eyeLClass = isYawning ? 'buddy-yawn-eye-l' : 'buddy-blink-l'
   const eyeRClass = isYawning ? 'buddy-yawn-eye-r' : 'buddy-blink-r'
@@ -161,13 +197,16 @@ export function BuddyCharacter({ size = 200, expression = 'idle' }: Props) {
       }} />
 
       <div
-        className="buddy-float"
+        className={isLaughing ? 'buddy-laugh-shake' : 'buddy-float'}
         style={{
           width: size, height: h,
           animation: isHappy ? 'buddy-happy-bob 0.55s ease-in-out 3, buddy-float 3.8s ease-in-out infinite 1.65s' : undefined,
         }}
       >
-        <div className="buddy-breathe" style={{ width: size, height: h, transformOrigin: 'bottom center' }}>
+        <div
+          className={isLaughing ? 'buddy-laugh-body' : 'buddy-breathe'}
+          style={{ width: size, height: h, transformOrigin: 'bottom center' }}
+        >
           <svg viewBox="0 0 100 125" width={size} height={h} xmlns="http://www.w3.org/2000/svg">
 
             <ellipse cx="50" cy="121" rx="22" ry="4" fill="rgba(0,0,0,0.22)" />
@@ -237,8 +276,19 @@ export function BuddyCharacter({ size = 200, expression = 'idle' }: Props) {
             />
 
             {/* Blush */}
-            <ellipse cx="27" cy="96" rx="9" ry="5" fill={isHappy ? 'rgba(240,90,80,0.38)' : 'rgba(240,110,90,0.26)'} />
-            <ellipse cx="73" cy="96" rx="9" ry="5" fill={isHappy ? 'rgba(240,90,80,0.38)' : 'rgba(240,110,90,0.26)'} />
+            <ellipse cx="27" cy="96" rx="9" ry="5" fill={(isHappy || isLaughing) ? 'rgba(240,90,80,0.42)' : 'rgba(240,110,90,0.26)'} />
+            <ellipse cx="73" cy="96" rx="9" ry="5" fill={(isHappy || isLaughing) ? 'rgba(240,90,80,0.42)' : 'rgba(240,110,90,0.26)'} />
+
+            {/* Laugh — squinted closed eyes */}
+            {isLaughing && (
+              <>
+                <path d="M31 85 Q40 82 49 85" stroke="#2a1f14" strokeWidth="4" strokeLinecap="round" fill="none" />
+                <path d="M51 85 Q60 82 69 85" stroke="#2a1f14" strokeWidth="4" strokeLinecap="round" fill="none" />
+                {/* Eye crinkle */}
+                <path d="M33 88 Q40 86 47 88" stroke="#e5c9a0" strokeWidth="1.5" strokeLinecap="round" fill="none" opacity="0.6" />
+                <path d="M53 88 Q60 86 67 88" stroke="#e5c9a0" strokeWidth="1.5" strokeLinecap="round" fill="none" opacity="0.6" />
+              </>
+            )}
 
             {/* Thinking one-eye squint */}
             {expression === 'thinking' && (
@@ -278,12 +328,24 @@ export function BuddyCharacter({ size = 200, expression = 'idle' }: Props) {
                   d={MOUTH.speaking}
                   stroke="#7a3525" strokeWidth="3" strokeLinecap="round" fill="none"
                 />
-                {/* Inner fill pops in when mouth is open */}
                 <path
                   className="buddy-speak-fill"
                   d="M45 105 Q50 113 55 105"
                   fill="#3a1a0c"
                 />
+              </>
+            ) : isLaughing ? (
+              <>
+                {/* Wide laugh mouth — animated open */}
+                <path
+                  className="buddy-laugh-mouth"
+                  d={MOUTH.laugh}
+                  stroke="#7a3525" strokeWidth="3.5" strokeLinecap="round" fill="none"
+                />
+                {/* Inner mouth — always visible when laughing */}
+                <path d="M41 104 Q50 117 59 104" fill="#3a1a0c" />
+                {/* Teeth top row */}
+                <path d="M42 103 Q50 103 58 103" stroke="white" strokeWidth="2.5" strokeLinecap="round" fill="none" />
               </>
             ) : (
               <path d={MOUTH[expression]} stroke="#7a3525" strokeWidth="3" strokeLinecap="round" fill="none" />

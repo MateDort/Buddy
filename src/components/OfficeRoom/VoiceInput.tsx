@@ -473,15 +473,16 @@ export function VoiceInput({ onSendText, onSendVoice, disabled = false }: Props)
 
       {/* ── MIC ERROR ── */}
       {mode === 'mic-error' && (
-        <div style={{ padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+        <div style={{ padding: '10px 14px', display: 'flex', flexDirection: 'column', gap: 8 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <span style={{ fontSize: 20 }}>🎙</span>
+            <span style={{ fontSize: 18 }}>🎙</span>
             <div style={{ flex: 1 }}>
               <div style={{ fontSize: 11, color: '#e8634a', fontFamily: 'DM Sans, sans-serif', fontWeight: 500 }}>
                 Microphone access denied
               </div>
-              <div style={{ fontSize: 10, color: '#4a4845', fontFamily: 'Geist Mono, monospace', marginTop: 2 }}>
-                Grant access in System Settings → Privacy → Microphone
+              <div style={{ fontSize: 9, color: '#4a4845', fontFamily: 'Geist Mono, monospace', marginTop: 2, lineHeight: 1.5 }}>
+                Dev mode: run <span style={{ color: '#d97757' }}>npm run setup-mic</span> in terminal,<br />
+                then restart the app. Or open System Settings below.
               </div>
             </div>
           </div>

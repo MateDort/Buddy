@@ -1,4 +1,5 @@
 // Global stat bar shown at the top of every room
+import { getCurrentWindow } from '@tauri-apps/api/window'
 import { useAppStore } from '../../stores/appStore'
 
 function MiniBar({ value, color, icon }: { value: number; color: string; icon: string }) {
@@ -30,10 +31,15 @@ export function StatsBar() {
   const buddy = useAppStore((s) => s.buddy)
   if (!buddy) return null
 
+  const handleMouseDown = (e: React.MouseEvent) => {
+    if (e.button === 0) {
+      getCurrentWindow().startDragging()
+    }
+  }
+
   return (
     <div
-      data-tauri-drag-region
-      className="drag-region"
+      onMouseDown={handleMouseDown}
       style={{
         display: 'flex',
         alignItems: 'center',
@@ -44,6 +50,7 @@ export function StatsBar() {
         flexShrink: 0,
         cursor: 'grab',
         userSelect: 'none',
+        WebkitUserSelect: 'none',
       }}
     >
       {/* Buddy name chip */}
@@ -51,17 +58,18 @@ export function StatsBar() {
         fontSize: 9, fontFamily: 'Geist Mono, monospace',
         color: '#d97757', letterSpacing: '0.05em', flexShrink: 0,
         fontWeight: 600,
+        pointerEvents: 'none',
       }}>
         {buddy.name.toUpperCase()}
       </span>
 
-      <div style={{ width: 1, height: 16, background: 'rgba(217,119,87,0.15)', flexShrink: 0 }} />
+      <div style={{ width: 1, height: 16, background: 'rgba(217,119,87,0.15)', flexShrink: 0, pointerEvents: 'none' }} />
 
       {/* Stat bars */}
-      <div style={{ flex: 1, display: 'flex', gap: 10 }}>
+      <div style={{ flex: 1, display: 'flex', gap: 10, pointerEvents: 'none' }}>
         <MiniBar value={buddy.hunger}    color="#e8634a" icon="HNG" />
-        <MiniBar value={buddy.happiness} color="#e8da4a" icon="☀" />
-        <MiniBar value={buddy.energy}    color="#4ae88a" icon="⚡" />
+        <MiniBar value={buddy.happiness} color="#e8da4a" icon="HAP" />
+        <MiniBar value={buddy.energy}    color="#4ae88a" icon="NRG" />
       </div>
     </div>
   )
