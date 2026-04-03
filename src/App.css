@@ -33,3 +33,13 @@ input, textarea {
 ::-webkit-scrollbar {
   display: none;
 }
+
+/* Window drag region — WKWebView CSS approach */
+.drag-region {
+  -webkit-app-region: drag;
+  app-region: drag;
+}
+.drag-region * {
+  -webkit-app-region: no-drag;
+  app-region: no-drag;
+}

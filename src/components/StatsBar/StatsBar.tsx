@@ -33,6 +33,7 @@ export function StatsBar() {
   return (
     <div
       data-tauri-drag-region
+      className="drag-region"
       style={{
         display: 'flex',
         alignItems: 'center',
@@ -58,7 +59,7 @@ export function StatsBar() {
 
       {/* Stat bars */}
       <div style={{ flex: 1, display: 'flex', gap: 10 }}>
-        <MiniBar value={buddy.hunger}    color="#e8634a" icon="🍖" />
+        <MiniBar value={buddy.hunger}    color="#e8634a" icon="HNG" />
         <MiniBar value={buddy.happiness} color="#e8da4a" icon="☀" />
         <MiniBar value={buddy.energy}    color="#4ae88a" icon="⚡" />
       </div>

@@ -298,6 +298,50 @@ fn toggle_mcp_server(server_name: String, disabled: bool) -> Result<(), String> 
     std::fs::write(&settings_path, new_content).map_err(|e| e.to_string())
 }
 
+/// Open System Settings → Privacy → Microphone
+#[tauri::command]
+async fn open_mic_settings() -> Result<(), String> {
+    tauri_plugin_opener::open_url(
+        "x-apple.systempreferences:com.apple.preference.security?Privacy_Microphone",
+        Option::<&str>::None,
+    ).map_err(|e| e.to_string())
+}
+
+/// Check if the user is authenticated with Claude Code (credential file exists)
+#[tauri::command]
+fn check_claude_auth() -> bool {
+    let Ok(home) = home_dir() else { return false };
+    let candidates = [
+        home.join(".claude/.credentials.json"),
+        home.join(".claude/auth.json"),
+    ];
+    for path in &candidates {
+        if path.exists() {
+            if let Ok(content) = std::fs::read_to_string(path) {
+                if content.trim().len() > 10 {
+                    return true;
+                }
+            }
+        }
+    }
+    false
+}
+
+/// Open Terminal.app and run `claude` to trigger the auth flow
+#[tauri::command]
+async fn run_claude_login() -> Result<(), String> {
+    Command::new("osascript")
+        .args([
+            "-e", "tell application \"Terminal\" to activate",
+            "-e", "tell application \"Terminal\" to do script \"claude\"",
+        ])
+        .env("PATH", enhanced_path())
+        .stdin(std::process::Stdio::null())
+        .spawn()
+        .map_err(|e| format!("Failed to open Terminal: {}", e))?;
+    Ok(())
+}
+
 /// List installed gstack skills
 #[tauri::command]
 fn list_skills() -> Result<Vec<String>, String> {
@@ -339,6 +383,9 @@ pub fn run() {
             read_mcp_servers,
             toggle_mcp_server,
             list_skills,
+            open_mic_settings,
+            check_claude_auth,
+            run_claude_login,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application")

@@ -1,4 +1,4 @@
-import { useEffect, useCallback, useRef } from 'react'
+import { useEffect, useCallback, useRef, useState } from 'react'
 import { invoke } from '@tauri-apps/api/core'
 import { listen } from '@tauri-apps/api/event'
 import { useAppStore, type BuddyInfo, type BuddySpecies } from './stores/appStore'
@@ -53,6 +53,73 @@ function NoCLIScreen() {
         fontSize: 10, color: '#87867f', fontFamily: 'Geist Mono, monospace', letterSpacing: '0.04em',
       }}>
         npm install -g @anthropic-ai/claude-code
+      </div>
+    </div>
+  )
+}
+
+function LoginScreen({ onRetry }: { onRetry: () => void }) {
+  const [opening, setOpening] = useState(false)
+
+  const openLogin = async () => {
+    setOpening(true)
+    try { await invoke('run_claude_login') } catch { /* ignore */ }
+    setTimeout(() => setOpening(false), 3000)
+  }
+
+  return (
+    <div style={{
+      height: '100%', display: 'flex', flexDirection: 'column',
+      alignItems: 'center', justifyContent: 'center', padding: 32, gap: 20, background: '#0d0d0b',
+    }}>
+      <div style={{
+        width: 72, height: 72, borderRadius: 20, fontSize: 40,
+        background: 'rgba(217,119,87,0.08)', border: '1px solid rgba(217,119,87,0.2)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+      }}>
+        🍄
+      </div>
+      <div style={{ textAlign: 'center', display: 'flex', flexDirection: 'column', gap: 6 }}>
+        <div style={{ fontSize: 16, fontWeight: 700, color: '#f5f2ed', fontFamily: 'DM Sans, sans-serif' }}>
+          Not logged in to Claude Code
+        </div>
+        <div style={{ fontSize: 12, color: '#87867f', lineHeight: 1.6, fontFamily: 'DM Sans, sans-serif' }}>
+          Buddy needs your Claude Code session.<br />
+          Log in to get started.
+        </div>
+      </div>
+      <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 8 }}>
+        <button
+          onClick={openLogin}
+          disabled={opening}
+          style={{
+            padding: '13px 0', borderRadius: 12,
+            background: opening ? 'rgba(217,119,87,0.3)' : '#d97757',
+            border: 'none', color: 'white', fontSize: 13, fontWeight: 600,
+            fontFamily: 'DM Sans, sans-serif', cursor: opening ? 'wait' : 'pointer',
+            boxShadow: opening ? 'none' : '0 0 20px rgba(217,119,87,0.35)',
+            transition: 'all 0.2s',
+          }}
+        >
+          {opening ? 'Opening Terminal...' : 'Log in with Claude Code →'}
+        </button>
+        <button
+          onClick={onRetry}
+          style={{
+            padding: '11px 0', borderRadius: 12,
+            background: 'rgba(38,36,32,0.8)', border: '1px solid rgba(217,119,87,0.2)',
+            color: '#87867f', fontSize: 12, fontWeight: 500,
+            fontFamily: 'DM Sans, sans-serif', cursor: 'pointer',
+          }}
+        >
+          I've logged in — Retry
+        </button>
+      </div>
+      <div style={{
+        fontSize: 10, color: '#3a3835', fontFamily: 'Geist Mono, monospace',
+        textAlign: 'center', lineHeight: 1.6,
+      }}>
+        run <span style={{ color: '#4a4845' }}>claude</span> in terminal to authenticate
       </div>
     </div>
   )
@@ -131,33 +198,40 @@ export default function App() {
   const { claudeReady, buddy, setClaudeReady, setBuddy, updateBuddy } = useAppStore()
   const currentRoom = useAppStore((s) => s.currentRoom)
   const lastActiveRef = useRef<number>(Date.now())
+  const [claudeAuthed, setClaudeAuthed] = useState<boolean | null>(null)
 
-  // Bootstrap: check CLI + load buddy on first mount
-  useEffect(() => {
-    async function bootstrap() {
-      const cliOk = await invoke<boolean>('check_claude_cli')
-      setClaudeReady(cliOk)
-      if (!cliOk) return
+  const runBootstrap = useCallback(async () => {
+    setClaudeAuthed(null)
+    const cliOk = await invoke<boolean>('check_claude_cli')
+    setClaudeReady(cliOk)
+    if (!cliOk) return
 
-      try {
-        const info = await invoke<{ name: string; species: string }>('read_buddy_info')
-        const stateJson = await invoke<string>('read_buddy_state')
-        const state = JSON.parse(stateJson)
-        setBuddy({
-          name: info.name,
-          species: info.species as BuddyInfo['species'],
-          stage: state.stage ?? 'baby',
-          xp: state.xp ?? 0,
-          hunger: state.hunger ?? 100,
-          happiness: state.happiness ?? 100,
-          energy: state.energy ?? 100,
-        })
-      } catch {
-        // buddy stays null → ManualBuddyScreen shows
-      }
+    const authOk = await invoke<boolean>('check_claude_auth')
+    setClaudeAuthed(authOk)
+    if (!authOk) return
+
+    try {
+      const info = await invoke<{ name: string; species: string }>('read_buddy_info')
+      const stateJson = await invoke<string>('read_buddy_state')
+      const state = JSON.parse(stateJson)
+      setBuddy({
+        name: info.name,
+        species: info.species as BuddyInfo['species'],
+        stage: state.stage ?? 'baby',
+        xp: state.xp ?? 0,
+        hunger: state.hunger ?? 100,
+        happiness: state.happiness ?? 100,
+        energy: state.energy ?? 100,
+      })
+    } catch {
+      // buddy stays null → ManualBuddyScreen shows
     }
-    bootstrap()
   }, [setClaudeReady, setBuddy])
+
+  // Bootstrap: check CLI + auth + load buddy on first mount
+  useEffect(() => {
+    runBootstrap()
+  }, [runBootstrap])
 
   // ── Stat timers ───────────────────────────────────────────────────────────────
   // Happiness goes up while user is active in the app, down when away
@@ -238,11 +312,14 @@ export default function App() {
 
   // ── Render ─────────────────────────────────────────────────────────────────
 
-  if (claudeReady === null) {
+  if (claudeReady === null || (claudeReady && claudeAuthed === null)) {
     return <Screen><LoadingScreen /></Screen>
   }
   if (claudeReady === false) {
     return <Screen><NoCLIScreen /></Screen>
+  }
+  if (claudeAuthed === false) {
+    return <Screen><LoginScreen onRetry={runBootstrap} /></Screen>
   }
   if (!buddy) {
     return <Screen><ManualBuddyScreen onSave={handleManualBuddy} /></Screen>

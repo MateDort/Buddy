@@ -10,24 +10,24 @@ interface Props {
 }
 
 const MOUTH: Record<Expression, string> = {
-  idle:     'M43 102 Q50 109 57 102',
-  happy:    'M40 100 Q50 112 60 100',
+  idle:     'M44 103 Q50 109 56 103',
+  happy:    'M40 101 Q50 113 60 101',
   hungry:   'M44 106 Q50 104 56 106',
-  thinking: 'M44 102 Q50 106 56 102',
-  speaking: 'M44 100 Q50 112 56 100',
-  eating:   'M43 100 Q50 114 57 100',   // open wide — chomped by animation
-  yawn:     'M42 99 Q50 120 58 99',      // jaw-drop wide
+  thinking: 'M45 103 Q50 107 55 103',
+  speaking: 'M44 101 Q50 111 56 101',  // base open — animated by CSS
+  eating:   'M43 100 Q50 115 57 100',
+  yawn:     'M42 99 Q50 121 58 99',
 }
 
 const CSS = `
   @keyframes buddy-float {
     0%,100% { transform: translateY(0px) rotate(0deg); }
-    25%      { transform: translateY(-10px) rotate(-1deg); }
-    75%      { transform: translateY(-6px) rotate(1deg); }
+    30%      { transform: translateY(-9px) rotate(-1.2deg); }
+    70%      { transform: translateY(-5px) rotate(1deg); }
   }
   @keyframes buddy-breathe {
     0%,100% { transform: scaleX(1) scaleY(1); }
-    50%      { transform: scaleX(1.03) scaleY(0.98); }
+    50%      { transform: scaleX(1.025) scaleY(0.982); }
   }
   @keyframes buddy-blink-l {
     0%,82%,100% { transform: scaleY(1); }
@@ -39,61 +39,112 @@ const CSS = `
   }
   @keyframes buddy-glow-pulse {
     0%,100% { opacity: 0.45; transform: translateX(-50%) scale(1); }
-    50%      { opacity: 0.75; transform: translateX(-50%) scale(1.08); }
+    50%      { opacity: 0.72; transform: translateX(-50%) scale(1.07); }
   }
   @keyframes buddy-spot  { 0%,100%{opacity:0.88} 50%{opacity:1} }
   @keyframes buddy-spot2 { 0%,100%{opacity:0.88} 50%{opacity:1} }
 
-  /* Eating — mouth chomps open/closed */
-  @keyframes buddy-chomp-open  { 0%,45%,100%{opacity:1} 50%,95%{opacity:0} }
-  @keyframes buddy-chomp-close { 0%,45%,100%{opacity:0} 50%,95%{opacity:1} }
-  .buddy-chomp-open  { animation: buddy-chomp-open  0.38s ease-in-out infinite; }
-  .buddy-chomp-close { animation: buddy-chomp-close 0.38s ease-in-out infinite; }
+  /* ── Speaking — mouth pulses between open and closed ── */
+  @keyframes buddy-speak-path {
+    0%    { d: path('M44 104 Q50 108 56 104'); }
+    15%   { d: path('M44 101 Q50 114 56 101'); }
+    30%   { d: path('M44 104 Q50 109 56 104'); }
+    50%   { d: path('M44 100 Q50 116 56 100'); }
+    65%   { d: path('M44 103 Q50 109 56 103'); }
+    80%   { d: path('M44 101 Q50 113 56 101'); }
+    100%  { d: path('M44 104 Q50 108 56 104'); }
+  }
+  @keyframes buddy-speak-fill {
+    0%,25%,55%,85%,100% { opacity: 0; }
+    15%,50%,80%         { opacity: 0.9; }
+  }
+  .buddy-speak-mouth {
+    animation: buddy-speak-path 0.55s ease-in-out infinite;
+  }
+  .buddy-speak-fill {
+    animation: buddy-speak-fill 0.55s ease-in-out infinite;
+  }
 
-  /* Yawn — eyes droop, jaw drops, then recovery */
+  /* ── Eating — dramatic chomp with inner fill ── */
+  @keyframes buddy-chomp-open  {
+    0%,42%,100% { opacity: 1; }
+    50%,92%     { opacity: 0; }
+  }
+  @keyframes buddy-chomp-close {
+    0%,42%,100% { opacity: 0; }
+    50%,92%     { opacity: 1; }
+  }
+  @keyframes buddy-chomp-inner {
+    0%,42%,100% { opacity: 1; transform: scaleY(1); }
+    50%,92%     { opacity: 0; transform: scaleY(0.3); }
+  }
+  .buddy-chomp-open  { animation: buddy-chomp-open  0.36s ease-in-out infinite; }
+  .buddy-chomp-close { animation: buddy-chomp-close 0.36s ease-in-out infinite; }
+  .buddy-chomp-inner {
+    animation: buddy-chomp-inner 0.36s ease-in-out infinite;
+    transform-box: fill-box; transform-origin: top center;
+  }
+
+  /* ── Yawn ── */
   @keyframes buddy-yawn-eye {
-    0%,25%,100% { transform: scaleY(1); }
-    40%,70%     { transform: scaleY(0.28); }
+    0%,20%,100% { transform: scaleY(1); }
+    35%,70%     { transform: scaleY(0.22); }
   }
   @keyframes buddy-yawn-mouth {
-    0%,20%  { d: path('M43 102 Q50 109 57 102'); }
-    35%,65% { d: path('M42 99 Q50 120 58 99'); }
-    85%,100%{ d: path('M43 102 Q50 109 57 102'); }
+    0%,18%  { d: path('M44 103 Q50 109 56 103'); }
+    32%,65% { d: path('M42 99 Q50 121 58 99'); }
+    82%,100%{ d: path('M44 103 Q50 109 56 103'); }
+  }
+  @keyframes buddy-yawn-inner {
+    0%,20%  { opacity: 0; }
+    35%,65% { opacity: 0.88; }
+    82%,100%{ opacity: 0; }
   }
   .buddy-yawn-eye-l {
-    animation: buddy-yawn-eye 2.8s ease-in-out forwards;
+    animation: buddy-yawn-eye 3s ease-in-out forwards;
     transform-box: fill-box; transform-origin: center;
   }
   .buddy-yawn-eye-r {
-    animation: buddy-yawn-eye 2.8s ease-in-out forwards 0.08s;
+    animation: buddy-yawn-eye 3s ease-in-out forwards 0.09s;
     transform-box: fill-box; transform-origin: center;
   }
   .buddy-yawn-mouth-path {
-    animation: buddy-yawn-mouth 2.8s ease-in-out forwards;
+    animation: buddy-yawn-mouth 3s ease-in-out forwards;
+  }
+  .buddy-yawn-inner {
+    animation: buddy-yawn-inner 3s ease-in-out forwards;
   }
 
-  .buddy-float   { animation: buddy-float 3.6s ease-in-out infinite; }
-  .buddy-breathe { animation: buddy-breathe 2.8s ease-in-out infinite; }
+  /* ── Happy — eyebrows raise, then subtle bounce ── */
+  @keyframes buddy-happy-bob {
+    0%,100% { transform: translateY(0px); }
+    40%     { transform: translateY(-3px); }
+  }
+
+  /* ── Base utils ── */
+  .buddy-float   { animation: buddy-float 3.8s ease-in-out infinite; }
+  .buddy-breathe { animation: buddy-breathe 2.9s ease-in-out infinite; }
   .buddy-blink-l {
-    animation: buddy-blink-l 5s ease-in-out infinite;
+    animation: buddy-blink-l 5.2s ease-in-out infinite;
     transform-box: fill-box; transform-origin: center;
   }
   .buddy-blink-r {
-    animation: buddy-blink-r 5s ease-in-out infinite 0.8s;
+    animation: buddy-blink-r 5.2s ease-in-out infinite 0.85s;
     transform-box: fill-box; transform-origin: center;
   }
-  .buddy-glow  { animation: buddy-glow-pulse 3s ease-in-out infinite; }
-  .buddy-spot1 { animation: buddy-spot  2.2s ease-in-out infinite; }
-  .buddy-spot2 { animation: buddy-spot2 2.2s ease-in-out infinite 0.7s; }
-  .buddy-spot3 { animation: buddy-spot  2.2s ease-in-out infinite 1.4s; }
+  .buddy-glow  { animation: buddy-glow-pulse 3.2s ease-in-out infinite; }
+  .buddy-spot1 { animation: buddy-spot  2.4s ease-in-out infinite; }
+  .buddy-spot2 { animation: buddy-spot2 2.4s ease-in-out infinite 0.8s; }
+  .buddy-spot3 { animation: buddy-spot  2.4s ease-in-out infinite 1.6s; }
 `
 
 export function BuddyCharacter({ size = 200, expression = 'idle' }: Props) {
   const h = size * 1.25
-  const isEating = expression === 'eating'
-  const isYawning = expression === 'yawn'
+  const isEating   = expression === 'eating'
+  const isYawning  = expression === 'yawn'
+  const isSpeaking = expression === 'speaking'
+  const isHappy    = expression === 'happy'
 
-  // Eye class: yawn droops both; otherwise normal blink
   const eyeLClass = isYawning ? 'buddy-yawn-eye-l' : 'buddy-blink-l'
   const eyeRClass = isYawning ? 'buddy-yawn-eye-r' : 'buddy-blink-r'
 
@@ -104,12 +155,18 @@ export function BuddyCharacter({ size = 200, expression = 'idle' }: Props) {
       {/* Ambient glow */}
       <div className="buddy-glow" style={{
         position: 'absolute', bottom: h * 0.04, left: '50%',
-        width: size * 0.85, height: size * 0.45,
+        width: size * 0.85, height: size * 0.44,
         background: 'radial-gradient(ellipse, rgba(217,119,87,0.35) 0%, transparent 70%)',
         borderRadius: '50%', filter: 'blur(14px)', pointerEvents: 'none',
       }} />
 
-      <div className="buddy-float" style={{ width: size, height: h }}>
+      <div
+        className="buddy-float"
+        style={{
+          width: size, height: h,
+          animation: isHappy ? 'buddy-happy-bob 0.55s ease-in-out 3, buddy-float 3.8s ease-in-out infinite 1.65s' : undefined,
+        }}
+      >
         <div className="buddy-breathe" style={{ width: size, height: h, transformOrigin: 'bottom center' }}>
           <svg viewBox="0 0 100 125" width={size} height={h} xmlns="http://www.w3.org/2000/svg">
 
@@ -151,7 +208,16 @@ export function BuddyCharacter({ size = 200, expression = 'idle' }: Props) {
               <ellipse cx="37" cy="83.5" rx="2.5" ry="2.5" fill="white" />
               <ellipse cx="43" cy="90" rx="1.5" ry="1" fill="rgba(255,255,255,0.4)" />
             </g>
-            <path d="M31 82 Q40 78 49 82" stroke="#d4a87a" strokeWidth="1.5" strokeLinecap="round" fill="none" />
+            {/* Left eyebrow */}
+            <path
+              d={isHappy
+                ? 'M31 78 Q40 74 49 78'
+                : expression === 'hungry'
+                ? 'M32 76 Q40 73 47 77'
+                : 'M31 82 Q40 78 49 82'}
+              stroke="#d4a87a" strokeWidth="1.5" strokeLinecap="round" fill="none"
+              style={{ transition: 'd 0.4s ease' }}
+            />
 
             <g className={eyeRClass}>
               <ellipse cx="60" cy="85" rx="9.5" ry="10.5" fill="#fdfaf6" />
@@ -159,42 +225,71 @@ export function BuddyCharacter({ size = 200, expression = 'idle' }: Props) {
               <ellipse cx="57" cy="83.5" rx="2.5" ry="2.5" fill="white" />
               <ellipse cx="63" cy="90" rx="1.5" ry="1" fill="rgba(255,255,255,0.4)" />
             </g>
-            <path d="M51 82 Q60 78 69 82" stroke="#d4a87a" strokeWidth="1.5" strokeLinecap="round" fill="none" />
+            {/* Right eyebrow */}
+            <path
+              d={isHappy
+                ? 'M51 78 Q60 74 69 78'
+                : expression === 'hungry'
+                ? 'M53 77 Q60 73 68 76'
+                : '51 82 Q60 78 69 82'}
+              stroke="#d4a87a" strokeWidth="1.5" strokeLinecap="round" fill="none"
+              style={{ transition: 'd 0.4s ease' }}
+            />
 
             {/* Blush */}
-            <ellipse cx="27" cy="96" rx="9" ry="5" fill="rgba(240,110,90,0.28)" />
-            <ellipse cx="73" cy="96" rx="9" ry="5" fill="rgba(240,110,90,0.28)" />
+            <ellipse cx="27" cy="96" rx="9" ry="5" fill={isHappy ? 'rgba(240,90,80,0.38)' : 'rgba(240,110,90,0.26)'} />
+            <ellipse cx="73" cy="96" rx="9" ry="5" fill={isHappy ? 'rgba(240,90,80,0.38)' : 'rgba(240,110,90,0.26)'} />
+
+            {/* Thinking one-eye squint */}
+            {expression === 'thinking' && (
+              <path d="M51.5 83 Q60 89 68.5 83" stroke="#d4a87a" strokeWidth="3" strokeLinecap="round" fill="#d4a87a" />
+            )}
 
             {/* ── Mouth ── */}
             {isEating ? (
-              // Chomp: two paths alternating — open wide / closed
               <>
+                {/* Open chomp — wide jaw */}
                 <path className="buddy-chomp-open"
-                  d="M43 100 Q50 114 57 100"
+                  d="M43 100 Q50 115 57 100"
                   stroke="#7a3525" strokeWidth="3" strokeLinecap="round" fill="none" />
-                <path className="buddy-chomp-open"
-                  d="M45 104 Q50 112 55 104" fill="#4a2010" />
+                {/* Inner mouth when open */}
+                <path className="buddy-chomp-inner"
+                  d="M45 105 Q50 113 55 105" fill="#3a1a0c" />
+                <path className="buddy-chomp-inner"
+                  d="M46 101 Q50 104 54 101" fill="#f2debb" opacity="0.6" />
+                {/* Closed */}
                 <path className="buddy-chomp-close"
                   d="M44 106 Q50 104 56 106"
-                  stroke="#7a3525" strokeWidth="3" strokeLinecap="round" fill="none" />
+                  stroke="#7a3525" strokeWidth="2.5" strokeLinecap="round" fill="none" />
               </>
             ) : isYawning ? (
               <>
                 <path className="buddy-yawn-mouth-path"
                   d={MOUTH.yawn}
                   stroke="#7a3525" strokeWidth="3" strokeLinecap="round" fill="none" />
-                <path d="M43 103 Q50 116 57 103" fill="#4a2010" opacity="0.85" />
+                {/* Inner mouth — fades in with yawn */}
+                <path className="buddy-yawn-inner"
+                  d="M43 103 Q50 117 57 103" fill="#3a1a0c" />
+              </>
+            ) : isSpeaking ? (
+              <>
+                <path
+                  className="buddy-speak-mouth"
+                  d={MOUTH.speaking}
+                  stroke="#7a3525" strokeWidth="3" strokeLinecap="round" fill="none"
+                />
+                {/* Inner fill pops in when mouth is open */}
+                <path
+                  className="buddy-speak-fill"
+                  d="M45 105 Q50 113 55 105"
+                  fill="#3a1a0c"
+                />
               </>
             ) : (
               <path d={MOUTH[expression]} stroke="#7a3525" strokeWidth="3" strokeLinecap="round" fill="none" />
             )}
 
-            {/* Speaking mouth fill */}
-            {expression === 'speaking' && (
-              <path d="M45 104 Q50 112 55 104" fill="#4a2010" />
-            )}
-
-            {/* Hungry eyebrows */}
+            {/* Hungry eyebrows (redundant path kept for compat) */}
             {expression === 'hungry' && (
               <>
                 <path d="M32 76 Q40 73 47 77" stroke="#c4905a" strokeWidth="2.5" strokeLinecap="round" fill="none" />
@@ -202,16 +297,19 @@ export function BuddyCharacter({ size = 200, expression = 'idle' }: Props) {
               </>
             )}
 
-            {/* Thinking squint */}
-            {expression === 'thinking' && (
-              <path d="M51 82 Q60 88 69 82" stroke="#d4a87a" strokeWidth="3" strokeLinecap="round" fill="#d4a87a" />
+            {/* Happy sparkle */}
+            {isHappy && (
+              <>
+                <text x="18" y="74" fontSize="7" fill="rgba(232,218,74,0.85)" style={{ animation: 'buddy-spot 1.2s ease-in-out 3' }}>✦</text>
+                <text x="76" y="70" fontSize="5" fill="rgba(232,218,74,0.65)" style={{ animation: 'buddy-spot 1.2s ease-in-out 3 0.3s' }}>✦</text>
+              </>
             )}
 
-            {/* Yawn — ZZZ particles */}
+            {/* Yawn ZZZ */}
             {isYawning && (
               <>
-                <text x="66" y="78" fontSize="7" fill="rgba(217,119,87,0.6)" fontFamily="serif" style={{ animation: 'buddy-spot 2.8s ease-in-out forwards' }}>z</text>
-                <text x="72" y="70" fontSize="5" fill="rgba(217,119,87,0.4)" fontFamily="serif">z</text>
+                <text x="66" y="76" fontSize="7" fill="rgba(217,119,87,0.6)" fontFamily="serif" style={{ animation: 'buddy-spot 3s ease-in-out forwards' }}>z</text>
+                <text x="73" y="67" fontSize="5" fill="rgba(217,119,87,0.38)" fontFamily="serif">z</text>
               </>
             )}
 
