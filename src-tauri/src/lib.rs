@@ -29,12 +29,33 @@ fn home_dir() -> Result<PathBuf, String> {
 /// Build a PATH that includes all common locations for claude + Node.js.
 fn enhanced_path() -> String {
     let current = std::env::var("PATH").unwrap_or_default();
+    let home = std::env::var("HOME").unwrap_or_default();
+
+    // Common NVM active-version symlink (works on macOS + Linux)
+    let nvm_current = format!("{}/.nvm/versions/node/current/bin", home);
+
+    // Find the highest installed Node version under ~/.nvm/versions/node/
+    let nvm_latest = {
+        let nvm_dir = format!("{}/.nvm/versions/node", home);
+        std::fs::read_dir(&nvm_dir)
+            .ok()
+            .and_then(|entries| {
+                entries
+                    .filter_map(|e| e.ok())
+                    .filter_map(|e| {
+                        let name = e.file_name().to_string_lossy().to_string();
+                        if name.starts_with('v') { Some(name) } else { None }
+                    })
+                    .max()
+            })
+            .map(|ver| format!("{}/{}/bin", nvm_dir, ver))
+            .unwrap_or_default()
+    };
+
     format!(
-        "/usr/local/bin:/opt/homebrew/bin:/usr/bin:/bin:/usr/local/share/nvm/current/bin\
-         :/usr/local/share/nvm/versions/node/$(node -v 2>/dev/null | tr -d v)/bin\
-         :/Users/{}/.nvm/versions/node/current/bin:{}",
-        std::env::var("USER").unwrap_or_default(),
-        current
+        "/usr/local/bin:/opt/homebrew/bin:/usr/bin:/bin\
+         :/usr/local/share/nvm/current/bin:{}:{}:{}",
+        nvm_current, nvm_latest, current
     )
 }
 
@@ -307,24 +328,67 @@ async fn open_mic_settings() -> Result<(), String> {
     ).map_err(|e| e.to_string())
 }
 
-/// Check if the user is authenticated with Claude Code (credential file exists)
+/// Check if the user is authenticated with Claude Code.
+/// Checks credential files first (fast), then falls back to a CLI probe.
 #[tauri::command]
-fn check_claude_auth() -> bool {
-    let Ok(home) = home_dir() else { return false };
-    let candidates = [
-        home.join(".claude/.credentials.json"),
-        home.join(".claude/auth.json"),
-    ];
-    for path in &candidates {
-        if path.exists() {
-            if let Ok(content) = std::fs::read_to_string(path) {
-                if content.trim().len() > 10 {
-                    return true;
+async fn check_claude_auth() -> bool {
+    if let Ok(home) = home_dir() {
+        // Claude Code stores credentials in various locations depending on version
+        let candidates = [
+            home.join(".claude/.credentials.json"),
+            home.join(".claude/auth.json"),
+            home.join(".config/claude/.credentials.json"),
+            // Newer Claude Code versions
+            home.join(".claude/session"),
+        ];
+        for path in &candidates {
+            if path.exists() {
+                if let Ok(content) = std::fs::read_to_string(path) {
+                    if content.trim().len() > 5 {
+                        return true;
+                    }
+                }
+                // File exists but empty — keep checking
+            }
+        }
+
+        // Also check if ~/.claude/ directory has any auth-related content
+        let claude_dir = home.join(".claude");
+        if claude_dir.exists() {
+            if let Ok(entries) = std::fs::read_dir(&claude_dir) {
+                for entry in entries.flatten() {
+                    let name = entry.file_name();
+                    let name_str = name.to_string_lossy();
+                    if name_str.contains("credential") || name_str.contains("auth") || name_str.contains("session") || name_str.contains("token") {
+                        if let Ok(content) = std::fs::read_to_string(entry.path()) {
+                            if content.trim().len() > 5 {
+                                return true;
+                            }
+                        }
+                    }
                 }
             }
         }
     }
-    false
+
+    // Fallback: fast CLI probe — if claude can list settings without error, we're authed
+    let result = Command::new(claude_bin())
+        .args(["config", "list"])
+        .env("PATH", enhanced_path())
+        .stdin(std::process::Stdio::null())
+        .output()
+        .await;
+
+    if let Ok(output) = result {
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        // If it prints config or nothing, we're auth'd. If it says login/auth error, we're not.
+        let not_authed = stderr.contains("login") || stderr.contains("auth") || stderr.contains("authenticate");
+        return !not_authed && output.status.success();
+    }
+
+    // If CLI probe fails entirely, assume auth'd (avoid false login screens)
+    true
 }
 
 /// Open Terminal.app and run `claude` to trigger the auth flow
